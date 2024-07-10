@@ -2,6 +2,8 @@ import { createContext, useEffect, useState } from "react";
 import PropTypes from 'prop-types';
 import { GithubAuthProvider, GoogleAuthProvider, createUserWithEmailAndPassword, onAuthStateChanged, signInWithEmailAndPassword, signInWithPopup, signOut } from "firebase/auth";
 import { auth } from './../firebase/firebase.config';
+import axios from "axios";
+import toast from "react-hot-toast";
 
 export const AuthContext = createContext();
 
@@ -33,10 +35,30 @@ const AuthProvider = ({children}) => {
         return signInWithEmailAndPassword(auth, email, password);
     }
 
-    const logout = () => {
+    const logout = async () => {
         setLoading(true);
+        await axios(`${import.meta.env.VITE_API_URL}/logout`, {
+            withCredentials: true
+        });
         return signOut(auth);
     }
+
+    // const logout = async () => {
+    //     setLoading(true);
+    //     try {
+    //       await axios.get(`${import.meta.env.VITE_API_URL}/logout`, {
+    //         withCredentials: true
+    //       });
+    //       await signOut(auth);
+    //       setUser(null);
+    //       toast.success("Logged out successfully");
+    //     } catch (error) {
+    //       console.error("Logout Error:", error);
+    //       toast.error("Failed to logout. Please try again.");
+    //     } finally {
+    //       setLoading(false);
+    //     }
+    //   };
 
     const authInfo = {
         user,

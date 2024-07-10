@@ -1,48 +1,71 @@
-import { useEffect, useState } from "react";
 import SectionTitle from "../../components/SectionTitle/SectionTitle";
 import useAuth from "../../hooks/useAuth";
+import { FaRegSquareCheck } from "react-icons/fa6";
+import { RxCrossCircled } from "react-icons/rx";
 import toast from "react-hot-toast";
-import { Link } from "react-router-dom";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import useAxiosSecure from "../../hooks/useAxiosSecure";
 
-const MyPostedJob = () => {
+const BidRequests = () => {
   const { user } = useAuth();
-  const [jobs, setJobs] = useState([]);
   const axiosSecure = useAxiosSecure();
+  const queryClient = useQueryClient();
 
-  useEffect(() => {
-    getData();
-  }, [user]);
+  const { data: bids = [], isLoading } = useQuery({
+    queryFn: () => getData(),
+    queryKey: ["bids", user?.email],
+  });
+
+  console.log(bids);
 
   const getData = async () => {
-    const { data } = await axiosSecure(`/jobs/${user?.email}`);
-    setJobs(data);
+    const { data } = await axiosSecure(`/bidRequests/${user?.email}`);
+    return data;
   };
 
-  const handleDelete = async (id) => {
-    try {
-      const { data } = await axiosSecure.delete(`/job/${id}`);
-      console.log(data);
-      toast.success("Your posted job has been Deleted Successfully!");
-      // refresh the ui
-      getData();
-    } catch (error) {
-      console.error("Error:", error);
-      toast.error(error.message);
+  const { mutateAsync } = useMutation({
+    mutationFn: async ({ id, status }) => {
+      const { data } = await axiosSecure.patch(`/bid/${id}`, { status });
+      return data;
+    },
+    onSuccess: () => {
+      console.log("Your data is updated");
+      toast.success("Your data is updated");
+      // refresh ui for latest data
+      // refetch()
+
+      queryClient.invalidateQueries({ queryKey: ["bids"] });
+    },
+  });
+
+  const handleStatus = async (id, prevStatus, status) => {
+    console.log(id);
+    console.log(status);
+    if (prevStatus === status) {
+      toast.error("Opps! You are on same Status!");
     }
+
+    await mutateAsync({ id, status });
   };
+
+  if (isLoading) {
+    return <p>Data is loading...</p>;
+  }
 
   return (
     <div>
       <section className="container px-4 mx-auto">
-        <SectionTitle heading="My Posted Jobs" description=""></SectionTitle>
+        <SectionTitle
+          heading="My All Bid Request"
+          description=""
+        ></SectionTitle>
 
         <div className="flex flex-col mt-6">
           <div className="-mx-4 -my-2 overflow-x-auto sm:-mx-6 lg:-mx-8">
             <div className="inline-block min-w-full py-2 align-middle md:px-6 lg:px-8">
-              {jobs.length === 0 ? (
+              {bids.length === 0 ? (
                 <div className="p-6 my-10 text-center text-gray-700 dark:text-gray-500 text-xl">
-                  No posted job Available
+                  No posted bid Available
                 </div>
               ) : (
                 <div className="overflow-hidden border border-gray-200 dark:border-gray-700 md:rounded-lg">
@@ -54,7 +77,7 @@ const MyPostedJob = () => {
                           className="py-3.5 px-4 text-sm font-normal text-left rtl:text-right text-gray-500 dark:text-gray-400"
                         >
                           <div className="flex items-center gap-x-3">
-                            <span>Job Service</span>
+                            <span>Service Info</span>
                           </div>
                         </th>
                         <th
@@ -90,6 +113,21 @@ const MyPostedJob = () => {
                             </svg>
                           </button>
                         </th>
+
+                        <th
+                          scope="col"
+                          className="px-4 py-3.5 text-sm font-normal text-left rtl:text-right text-gray-500 dark:text-gray-400"
+                        >
+                          Email
+                        </th>
+                        <th
+                          scope="col"
+                          className="px-4 py-3.5 text-sm font-normal text-left rtl:text-right text-gray-500 dark:text-gray-400"
+                        >
+                          <button className="flex items-center gap-x-2">
+                            <span>Status</span>
+                          </button>
+                        </th>
                         <th
                           scope="col"
                           className="px-4 py-3.5 text-sm font-normal text-left rtl:text-right text-gray-500 dark:text-gray-400"
@@ -119,26 +157,20 @@ const MyPostedJob = () => {
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-gray-200 dark:divide-gray-700 bg-gradient-to-r from-zinc-800 to-slate-900">
-                      {jobs.map((job) => (
-                        <tr key={job._id}>
+                      {bids.map((bid) => (
+                        <tr key={bid._id}>
                           <td className="px-4 py-4 text-sm font-medium text-gray-700 whitespace-nowrap">
                             <div className="inline-flex items-center gap-x-3">
                               <div className="flex items-center gap-x-2">
                                 <div className="avatar">
                                   <div className="w-16 rounded-xl">
-                                    <img src={job.service_img} />
+                                    <img src={bid.service_img} />
                                   </div>
                                 </div>
                                 <div>
                                   <h2 className="font-medium text-gray-800 dark:text-white ">
-                                    {job.title}
+                                    {bid.title}
                                   </h2>
-                                  <p className="text-sm font-normal text-gray-600 dark:text-gray-400">
-                                    @
-                                    {job.buyer?.name
-                                      .toLowerCase()
-                                      .replace(/\s/g, "")}
-                                  </p>
                                 </div>
                               </div>
                             </div>
@@ -147,62 +179,84 @@ const MyPostedJob = () => {
                             <div className="inline-flex items-center px-3 py-1 rounded-full gap-x-2 bg-purple-100/60 dark:bg-gray-800 ">
                               <h2
                                 className={`text-sm font-normal ${
-                                  job.category === "Web Development" &&
+                                  bid.category === "Web Development" &&
                                   "text-blue-500"
                                 } ${
-                                  job.category === "Digital Marketing" &&
+                                  bid.category === "Digital Marketing" &&
                                   "text-green-500"
                                 } ${
-                                  job.category === "Virtual Assistance" &&
+                                  bid.category === "Virtual Assistance" &&
                                   "text-purple-500"
                                 } ${
-                                  job.category === "Graphic Design" &&
+                                  bid.category === "Graphic Design" &&
                                   "text-pink-500"
                                 } ${
-                                  job.category === "App Development" &&
+                                  bid.category === "App Development" &&
                                   "text-teal-500"
                                 }`}
                               >
-                                {job.category}
+                                {bid.category}
                               </h2>
                             </div>
                           </td>
-                          <td className="px-4 py-4 text-sm text-gray-500 dark:text-gray-300 whitespace-nowrap">
-                            {job.min_price} - {job.max_price}
+                          <td>
+                            <span className=" text-gray-800 dark:text-white ">
+                              {bid.email}
+                            </span>
                           </td>
                           <td className="px-4 py-4 text-sm text-gray-500 dark:text-gray-300 whitespace-nowrap">
-                            {new Date(job.deadline).toLocaleDateString()}
+                            <h2
+                              className={`text-sm font-normal px-3 py-1 rounded-full gap-x-2 bg-purple-100/60 dark:bg-slate-800 ${
+                                bid.status === "Pending" && "text-yellow-500"
+                              } ${
+                                bid.status === "In Progress" && "text-green-500"
+                              } ${
+                                bid.status === "Complete" && "text-purple-500"
+                              } ${
+                                bid.status === "Rejected" && "text-pink-500"
+                              } `}
+                            >
+                              {" "}
+                              {bid.status}
+                            </h2>
+                          </td>
+                          <td className="px-4 py-4 text-sm text-gray-500 dark:text-gray-300 whitespace-nowrap">
+                            {bid.price}
+                          </td>
+
+                          <td className="px-4 py-4 text-sm text-gray-500 dark:text-gray-300 whitespace-nowrap">
+                            {new Date(bid.deadline).toLocaleDateString()}
                           </td>
 
                           <td
                             className={`px-12 py-4 text-sm font-medium whitespace-nowrap ${
-                              new Date(job.deadline) < new Date()
+                              new Date(bid.deadline) < new Date()
                                 ? "text-red-500"
                                 : "text-green-500"
                             }`}
                           >
                             <div
                               className={`inline-flex items-center px-3 py-1 rounded-full gap-x-2 ${
-                                new Date(job.deadline) < new Date()
+                                new Date(bid.deadline) < new Date()
                                   ? "bg-red-100/60 dark:bg-gray-800"
                                   : "bg-green-100/60 dark:bg-gray-800"
                               }`}
                             >
                               <span
                                 className={`h-1.5 w-1.5 rounded-full ${
-                                  new Date(job.deadline) < new Date()
+                                  new Date(bid.deadline) < new Date()
                                     ? "bg-red-500"
                                     : "bg-green-500"
                                 }`}
                               />
                               <h2
                                 className={`text-sm font-normal ${
-                                  new Date(job.deadline) < new Date()
+                                  new Date(bid.deadline) < new Date()
                                     ? "text-red-500"
                                     : "text-green-500"
                                 }`}
                               >
-                                {new Date(job.deadline) < new Date()
+                                {new Date(bid.deadline) < new Date()
                                   ? "Expired"
                                   : "Available"}
                               </h2>
@@ -212,43 +266,28 @@ const MyPostedJob = () => {
                           <td className="px-4 py-4 text-sm whitespace-nowrap">
                             <div className="flex items-center gap-x-6">
                               <button
-                                onClick={() => handleDelete(job._id)}
-                                className="text-gray-500 transition-colors duration-200 dark:hover:text-rose-600 dark:text-gray-300 hover:text-rose-600 focus:outline-none"
+                                onClick={() =>
+                                  handleStatus(
+                                    bid._id,
+                                    bid.status,
+                                    "In Progress"
+                                  )
+                                }
+                                disabled={bid.status === "Complete"}
+                                className="disabled:cursor-not-allowed text-gray-500 transition-colors duration-200 dark:hover:text-green-600 dark:text-gray-300 hover:text-green-600 focus:outline-none"
                               >
-                                <svg
-                                  xmlns="http://www.w3.org/2000/svg"
-                                  fill="none"
-                                  viewBox="0 0 24 24"
-                                  strokeWidth="1.5"
-                                  stroke="currentColor"
-                                  className="w-5 h-5"
-                                >
-                                  <path
-                                    strokeLinecap="round"
-                                    strokeLinejoin="round"
-                                    d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0"
-                                  />
-                                </svg>
+                                <FaRegSquareCheck size={20} />
                               </button>
-                              <Link
-                                to={`/update/${job._id}`}
-                                className="text-gray-500 transition-colors duration-200 dark:hover:text-purple-700 dark:text-gray-300 hover:text-purple-700 focus:outline-none"
+
+                              <button
+                                onClick={() =>
+                                  handleStatus(bid._id, bid.status, "Rejected")
+                                }
+                                disabled={bid.status === "Complete"}
+                                className="disabled:cursor-not-allowed text-gray-500 transition-colors duration-200 dark:hover:text-rose-600 dark:text-gray-300 hover:text-rose-600 focus:outline-none"
                               >
-                                <svg
-                                  xmlns="http://www.w3.org/2000/svg"
-                                  fill="none"
-                                  viewBox="0 0 24 24"
-                                  strokeWidth="1.5"
-                                  stroke="currentColor"
-                                  className="w-5 h-5"
-                                >
-                                  <path
-                                    strokeLinecap="round"
-                                    strokeLinejoin="round"
-                                    d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 011.13-1.897l8.932-8.931zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0115.75 21H5.25A2.25 2.25 0 013 18.75V8.25A2.25 2.25 0 015.25 6H10"
-                                  />
-                                </svg>
-                              </Link>
+                                <RxCrossCircled size={25} />
+                              </button>
                             </div>
                           </td>
                         </tr>
@@ -265,4 +304,4 @@ const MyPostedJob = () => {
   );
 };
 
-export default MyPostedJob;
+export default BidRequests;

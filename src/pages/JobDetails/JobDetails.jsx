@@ -1,4 +1,4 @@
-import { useLoaderData } from "react-router-dom";
+import { useLoaderData, useNavigate } from "react-router-dom";
 import useAuth from "../../hooks/useAuth";
 import { FaBangladeshiTakaSign } from "react-icons/fa6";
 import { CgNametag } from "react-icons/cg";
@@ -13,10 +13,13 @@ import "react-datepicker/dist/react-datepicker.css";
 import { useState } from "react";
 import axios from "axios";
 import toast from "react-hot-toast";
+import useAxiosSecure from "../../hooks/useAxiosSecure";
 
 const JobDetails = () => {
+  const axiosSecure = useAxiosSecure();
   const [startDate, setStartDate] = useState(new Date());
   const { user } = useAuth();
+  const navigate = useNavigate();
 
   const job = useLoaderData();
   const {
@@ -59,22 +62,23 @@ const JobDetails = () => {
       status,
       buyer,
       email,
+      service_img,
       buyer_email: buyer?.email,
     };
 
     try {
-      const response = await axios.post(
-        `${import.meta.env.VITE_API_URL}/bid`,
+      const response = await axiosSecure.post(
+        `/bid`,
         bidData
       );
       console.log(response.data);
-      if (response.data.insertedId) {
-        {
-          toast.success("Your Proposal is Submitted");
-        }
-      }
+
+      toast.success("Your Proposal is Submitted");
+      navigate('/myBids')
+      
     } catch (error) {
-      console.error("Error:", error);
+      toast.error(error.response.data);
+      e.target.reset();
     }
   };
 
@@ -238,6 +242,7 @@ const JobDetails = () => {
                             name="price"
                             className="w-full peer bg-transparent h-10 rounded-lg text-gray-900 placeholder-transparent ring-2 px-2 ring-gray-500 focus:ring-purple-600 focus:outline-none focus:border-rose-600"
                             placeholder="Price"
+                            required
                           />
                           <label
                             htmlFor="username"

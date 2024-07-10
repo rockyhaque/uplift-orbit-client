@@ -25,7 +25,7 @@ const JobCard = ({job}) => {
         <div className="mt-8">
           <div className="flex justify-between items-center gap-2">
             <h4 className="font-bold text-xl">{title}</h4>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 hidden">
               <div className="p-2 bg-slate-800 rounded-md">
                 <MdStarBorder className=" text-white " />
               </div>

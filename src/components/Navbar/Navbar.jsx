@@ -24,7 +24,7 @@ const Navbar = () => {
         <CustomNavLink to="/">Home</CustomNavLink>
       </li>
       <li>
-        <CustomNavLink to="/login">Login</CustomNavLink>
+        <CustomNavLink to="/jobs">All Jobs</CustomNavLink>
       </li>
       
       <li>
@@ -35,6 +35,12 @@ const Navbar = () => {
       </li>
       <li>
         <CustomNavLink to="/myPostedJob">My Posted Job</CustomNavLink>
+      </li>
+      <li>
+        <CustomNavLink to="/myBids">My Bids</CustomNavLink>
+      </li>
+      <li>
+        <CustomNavLink to="/bidRequests">Bid Requests</CustomNavLink>
       </li>
     </div>
   );

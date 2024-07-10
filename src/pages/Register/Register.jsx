@@ -1,92 +1,143 @@
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import useAuth from "../../hooks/useAuth";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import toast from "react-hot-toast";
 import { useForm } from "react-hook-form";
 import { IoEyeOffOutline } from "react-icons/io5";
 import { MdOutlineRemoveRedEye } from "react-icons/md";
 import { updateProfile } from "firebase/auth";
 import { auth } from "../../firebase/firebase.config";
+import axios from "axios";
 
 const Register = () => {
-    const [error, setError] = useState("");
-    const [showPass, setShowPass] = useState(false);
-    const navigate = useNavigate();
-    const location = useLocation();
-  
-    const { googleLogin, githubLogin, setUser, createUser, setLoading } =
-      useAuth();
-  
-    //react hook form
-    const {
-      register,
-      handleSubmit,
-      formState: { errors },
-    } = useForm();
-  
-    const onSubmit = async (data) => {
-      const { email, name, password, photoURL } = data;
-  
+  const [error, setError] = useState("");
+  const [showPass, setShowPass] = useState(false);
+  const navigate = useNavigate();
+  const location = useLocation();
+
+  const {
+    googleLogin,
+    githubLogin,
+    user,
+    setUser,
+    createUser,
+    loading,
+    setLoading,
+  } = useAuth();
+
+  useEffect(() => {
+    if (user) {
+      navigate("/");
+    }
+  }, [navigate, user]);
+
+  //react hook form
+  const {
+    register,
+    handleSubmit,
+    formState: { errors },
+  } = useForm();
+
+  const onSubmit = async (data) => {
+    const { email, name, password, photoURL } = data;
+
+    try {
+      // create user in Firebase
+      await createUser(email, password);
+
+      setLoading(true);
+      // update user profile
+      await updateProfile(auth.currentUser, {
+        displayName: name,
+        photoURL,
+      });
+
+      // set user to state
+      setLoading(false);
+      setUser({
+        ...auth.currentUser,
+        displayName: name,
+        photoURL,
+      });
+
+      // Request JWT token
       try {
-        // create user in Firebase
-        await createUser(email, password);
-  
-        setLoading(true);
-        // update user profile
-        await updateProfile(auth.currentUser, {
-          displayName: name,
-          photoURL,
-        });
-  
-        // set user to state
-        setLoading(false);
-        setUser({
-          ...auth.currentUser,
-          displayName: name,
-          photoURL,
-        });
-  
-        // Navigate to home or another page
-        navigate("/");
-        toast.success('Yay! User Created Successfully 🤩');
-      } catch (error) {
-        setError(error.message);
-        toast.error(`Opps! ${error.message}`);
+        const response = await axios.post(
+          `${import.meta.env.VITE_API_URL}/jwt`,
+          { email }
+        );
+        const token = response.data.token;
+        console.log(token);
+        // Optionally, you might want to store the token in local storage or state
+        localStorage.setItem("jwtToken", token);
+      } catch (jwtError) {
+        console.error("JWT Error:", jwtError);
+        toast.error(`Failed to retrieve JWT: ${jwtError.message}`);
       }
-    };
 
-    const handleGoogleLogin = () => {
-        googleLogin()
-          .then((result) => {
-            setUser(result.user);
-            // console.log(result.user);
-            toast.success("Logged In Successfully 🤩");
-            navigate(location?.state ? location.state : "/");
-          })
-          .catch((error) => {
-            setError(error.message);
-            toast.error(`Opps! ${error.message}`);
-          });
-      };
-    
-      const handleGithubLogin = () => {
-        githubLogin()
-          .then((result) => {
-            setUser(result.user);
-            // console.log(result.user);
-            toast.success("Logged In Successfully 🤩");
-            // navigate(location?.state ? location.state : "/");
-          })
-          .catch((error) => {
-            setError(error.message);
-            toast.error(`Opps! ${error.message}`);
-          });
-      };
+      // Navigate to home or another page
+      navigate("/");
+      toast.success("Yay! User Created Successfully 🤩");
+    } catch (error) {
+      setError(error.message);
+      toast.error(`Oops! ${error.message}`);
+    }
+  };
 
+  const handleGoogleLogin = async () => {
+    try {
+      const result = await googleLogin();
+      setUser(result.user);
+      console.log(result.user);
 
+      const { data } = await axios.post(
+        `${import.meta.env.VITE_API_URL}/jwt`,
+        {
+          email: result?.user?.email,
+        },
+        { withCredentials: true }
+      );
 
-    return (
-        <div className=" flex justify-center items-center py-4 md:py-10 lg:py-28">
+      console.log(data);
+
+      toast.success("Logged In Successfully 🤩");
+      navigate(location?.state ? location.state : "/");
+    } catch (error) {
+      setError(error.message);
+      toast.error(`Oops! ${error.message}`);
+    }
+  };
+
+  const handleGithubLogin = async () => {
+    try {
+      const result = await githubLogin();
+      setUser(result.user);
+      toast.success("Logged In Successfully 🤩");
+
+      try {
+        const { data } = await axios.post(
+          `${import.meta.env.VITE_API_URL}/jwt`,
+          {
+            email: result?.user?.email,
+          }
+        );
+        console.log(data);
+      } catch (jwtError) {
+        console.error("JWT Error:", jwtError);
+        toast.error(`Failed to retrieve JWT: ${jwtError.message}`);
+      }
+
+      navigate(location?.state ? location.state : "/");
+    } catch (error) {
+      setError(error.message);
+      toast.error(`Oops! ${error.message}`);
+    }
+  };
+
+  if (user || loading) return;
+
+  return (
+    <div className=" flex justify-center items-center py-4 md:py-10 lg:py-28">
       <div className="w-full max-w-xs sm:max-w-sm md:max-w-md lg:max-w-lg xl:max-w-xl 2xl:max-w-2xl">
         <div
           id="back-div"
@@ -247,7 +298,7 @@ const Register = () => {
               </button>
 
               <button
-              onClick={handleGithubLogin}
+                onClick={handleGithubLogin}
                 className="hover:scale-105 ease-in-out duration-300 shadow-lg p-2 rounded-lg m-1"
               >
                 <img
@@ -285,7 +336,7 @@ const Register = () => {
         </div>
       </div>
     </div>
-    );
+  );
 };
 
 export default Register;
