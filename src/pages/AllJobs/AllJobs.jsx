@@ -3,7 +3,7 @@ import { useEffect, useState } from "react";
 import JobCard from "../../components/JobCard/JobCard";
 
 const AllJobs = () => {
-  const [itemsPerPage, setItemsPerPage] = useState(4);
+  const [itemsPerPage, setItemsPerPage] = useState(6);
   const [currentPage, setCurrentPage] = useState(1);
   const [count, setCount] = useState(0);
   const [filter, setFilter] = useState("");

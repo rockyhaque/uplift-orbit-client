@@ -1,11 +1,11 @@
 import { IoPricetagOutline } from "react-icons/io5";
 import { CiCalendar } from "react-icons/ci";
-import { MdStarBorder } from "react-icons/md";
+import { MdOutlineSupervisorAccount } from "react-icons/md";
 import { Link } from "react-router-dom";
 import { useState } from "react";
 
 const JobCard = ({job}) => {
-  const { _id, title, description, category, service_img, deadline, rating, max_price, min_price} = job || {};
+  const { _id, title, description, category, service_img, deadline, rating, max_price, min_price, bid_count} = job || {};
   const [imageLoaded, setImageLoaded] = useState(false);
 
   return (
@@ -25,11 +25,11 @@ const JobCard = ({job}) => {
         <div className="mt-8">
           <div className="flex justify-between items-center gap-2">
             <h4 className="font-bold text-xl">{title}</h4>
-            <div className="flex items-center gap-2 hidden">
+            <div className="flex items-center gap-2">
               <div className="p-2 bg-slate-800 rounded-md">
-                <MdStarBorder className=" text-white " />
+                <MdOutlineSupervisorAccount className=" text-white " />
               </div>
-              <span className="text-xl font-bold">{rating}</span>
+              <span className="text-xl  font-bold">{bid_count}</span>
             </div>
           </div>
           <p className="badge badge-lg bg-slate-800 text-slate-200">
